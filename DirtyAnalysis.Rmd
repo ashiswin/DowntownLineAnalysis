@@ -65,9 +65,19 @@ toGeocode.unique <- toGeocode %>%
   summarise(count = n())
 #write_csv(toGeocode.unique, "csv/toGeocode.csv")
 geocodedLocations <- read_csv("csv/geocoded.csv")
-toGeocode <- left_join(geocodedLocations, toGeocode, by = c("location" = "location"))
-#ggplot(tenders.sp, aes(x = lon, y = lat, size = priceM2, color = type)) +
-#  geom_point(alpha = 0.3) +
-#  coord_fixed()
+toGeocode <- left_join(geocodedLocations, toGeocode, by = c("location" = "location")) %>%
+  filter(lat != "unknown")
+```
+
+Next we load in the KML of Singapore's subzones so we can perform a much finer-grained analysis of the data.
+
+```{r}
+library(sf)
+library(rgdal)
+library(maptools)
+#subzones <- st_read("kml/MP14_SUBZONE_WEB_PL.kml")
+subzones <- readOGR("kml/MP14_SUBZONE_WEB_PL.kml", "MP14_SUBZONE_WEB_PL")
+#coordinates(toGeocode) <- ~as.numeric(long)+as.numeric(lat)
+toGeocode %over% subzones
 ```
 
