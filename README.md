@@ -4,7 +4,9 @@ The purpose of the project is to perform an analysis of property prices in Singa
 
 ## Getting Started
 
-To launch this project, simply launch one of the R notebooks present in the repo.
+To launch this project, simply launch one of the R notebooks present in the repo:
+
+* **DirtyAnalysis.Rmd** - Quick and dirty analysis of feasibilty of hypothesis
 
 ### Prerequisites
 
@@ -15,7 +17,7 @@ The system runs on R, so you need the appropriate R installation for your OS.
 * **Gionnieve Lim** - 
 * **Ho Pei Yi Clara** - 
 * **Isaac Ashwin** - [ashiswin](https://github.com/ashiswin)
-* **Ong Jun Sheng** - 
+* **Ong Jun Sheng** - [jarvin95](https://github.com/jarvin95)
 
 See also the list of [contributors](https://github.com/DowntownLineAnalysis/contributors) who participated in this project.
 
