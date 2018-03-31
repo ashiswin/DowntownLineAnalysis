@@ -32,19 +32,21 @@ We chose the following towns to be our *"experimental"* towns:
 * Tampines
 * 
 
-These tend to have quite a number of HDB blocks around them, which is what our dataset contains. We now need to extract the relevant components of our dataset and plot facet plots of them.
+These tend to have quite a number of HDB blocks around them, which is what our dataset contains. We now need to extract the relevant components of our dataset and plot facet plots of them. For the purpose of our analysis, we use 4-room flats as they are the most commonly purchased/sold units.
 
 ```{r}
 towns <- prices %>%
   filter(town == "MARINE PARADE" | town == "HOUGANG" | town == "WOODLANDS" | town == "TAMPINES") %>%
-  mutate(year = substr(month, 1, 4))
+  filter(flat_type == "4 ROOM") %>%
+  mutate(year = substr(month, 1, 4)) %>%
+  mutate(resale_price = resale_price / 1000)
 
-ggplot(towns, aes(x=year, fill=median(resale_price))) +
-  geom_bar() +
+ggplot(towns, aes(x=year, y=resale_price)) +
+  geom_bar(stat="summary", fun.y = "median") +
   facet_grid(town ~ ., scales="free_y") +
   theme(strip.text.y = element_text(angle = 0), axis.text.x = element_text(angle = 60, hjust = 1)) +
   ylab("Price in Thousands") + xlab("Year") + 
-  ggtitle("Median House Prices") +
+  ggtitle("Median House Prices Over the Years") +
   guides(fill=FALSE)
 ```
 
