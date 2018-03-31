@@ -8,6 +8,7 @@ The goal of this notebook is to perform a quick analysis of the data to see if o
 ```{r}
 library(tidyverse)
 library(lubridate)
+library(ggplot2)
 
 prices <- read_csv('csv/final.csv')
 prices
@@ -21,7 +22,6 @@ unique(prices$town)
 We now need to decide on a few towns we wish to analyse over the years. We decided to use the following towns as *"control"* towns:
 
 * Marine Parade
-* Lim Chu Kang
 * Hougang
 * Woodlands
 
@@ -36,8 +36,15 @@ These tend to have quite a number of HDB blocks around them, which is what our d
 
 ```{r}
 towns <- prices %>%
-  filter(town == "MARINE PARADE" | town == "LIM CHU KANG" | town == "HOUGANG" | town == "WOODLANDS" | town == "TAMPINES")
+  filter(town == "MARINE PARADE" | town == "HOUGANG" | town == "WOODLANDS" | town == "TAMPINES") %>%
+  mutate(year = substr(month, 1, 4))
 
-
+ggplot(towns, aes(x=year, fill=median(resale_price))) +
+  geom_bar() +
+  facet_grid(town ~ ., scales="free_y") +
+  theme(strip.text.y = element_text(angle = 0), axis.text.x = element_text(angle = 60, hjust = 1)) +
+  ylab("Price in Thousands") + xlab("Year") + 
+  ggtitle("Median House Prices") +
+  guides(fill=FALSE)
 ```
 
