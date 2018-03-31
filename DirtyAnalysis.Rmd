@@ -9,9 +9,9 @@ The goal of this notebook is to perform a quick analysis of the data to see if o
 library(tidyverse)
 library(lubridate)
 library(ggplot2)
+library(geoChina)
 
 prices <- read_csv('csv/final.csv')
-prices
 ```
 
 Let's see what towns are captured in our dataset.
@@ -48,5 +48,26 @@ ggplot(towns, aes(x=year, y=resale_price)) +
   ylab("Price in Thousands") + xlab("Year") + 
   ggtitle("Median House Prices Over the Years") +
   guides(fill=FALSE)
+```
+
+As we can see, both our control and our experimental towns have the same trends. Hence, we might need to increase the granularity of our analysis. We therefore need to geocode our data so we can properly restrict them to smaller zones.
+
+```{r}
+toGeocode <- prices %>%
+  filter(flat_type == "4 ROOM") %>%
+  mutate(year = substr(month, 1, 4)) %>%
+  mutate(resale_price = resale_price / 1000) %>%
+  mutate(location = paste0(block, " ", street_name))
+  
+
+toGeocode.unique <- toGeocode %>%
+  group_by(block, street_name) %>%
+  summarise(count = n())
+#write_csv(toGeocode.unique, "csv/toGeocode.csv")
+geocodedLocations <- read_csv("csv/geocoded.csv")
+toGeocode <- left_join(geocodedLocations, toGeocode, by = c("location" = "location"))
+#ggplot(tenders.sp, aes(x = lon, y = lat, size = priceM2, color = type)) +
+#  geom_point(alpha = 0.3) +
+#  coord_fixed()
 ```
 
