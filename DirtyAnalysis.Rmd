@@ -61,23 +61,25 @@ toGeocode <- prices %>%
   
 
 toGeocode.unique <- toGeocode %>%
-  group_by(block, street_name) %>%
+  group_by(location) %>%
   summarise(count = n())
 #write_csv(toGeocode.unique, "csv/toGeocode.csv")
 geocodedLocations <- read_csv("csv/geocoded.csv")
-toGeocode <- left_join(geocodedLocations, toGeocode, by = c("location" = "location")) %>%
-  filter(lat != "unknown")
+geocodedPrices <- left_join(geocodedLocations, toGeocode, by = c("location" = "location")) %>%
+  filter(lat != "unknown") %>%
+  mutate(lat = as.numeric(lat)) %>%
+  mutate(lon = as.numeric(long))
 ```
 
 Next we load in the KML of Singapore's subzones so we can perform a much finer-grained analysis of the data.
 
 ```{r}
 library(sf)
-library(rgdal)
-library(maptools)
-#subzones <- st_read("kml/MP14_SUBZONE_WEB_PL.kml")
-subzones <- readOGR("kml/MP14_SUBZONE_WEB_PL.kml", "MP14_SUBZONE_WEB_PL")
-#coordinates(toGeocode) <- ~as.numeric(long)+as.numeric(lat)
-toGeocode %over% subzones
+subzones <- st_read("kml/MP14_SUBZONE_WEB_PL.kml")
+priceShapes <- st_as_sf(geocodedPrices, coords = c("lon", "lat"))
+plot(subzones)
+plot(priceShapes, add = T)
+#coordinates(geocodedPrices) <- ~as.numeric(long)+as.numeric(lat)
+#toGeocode %over% subzones
 ```
 

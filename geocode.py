@@ -4,8 +4,9 @@ import requests
 import json
 import time
 
-with open('csv/toGeocode.csv', 'rb') as csvfile:
-	r = csv.reader(csvfile, delimiter=',', quotechar='|')
+config = json.load(open('config.json'))
+with open(config["input_file"], 'rb') as csvfile:
+	r = csv.DictReader(csvfile, delimiter=',', quotechar='|')
 	i = -1
 	l = []
 	complete = 0
@@ -13,7 +14,7 @@ with open('csv/toGeocode.csv', 'rb') as csvfile:
 		i += 1
 		if i == 0:
 			continue
-		l.append([row[0] + " " + row[1]])
+		l.append([row[config["address_column"]]])
 	
 	def geocode(i):
 		global complete
@@ -23,8 +24,8 @@ with open('csv/toGeocode.csv', 'rb') as csvfile:
 		result = json.loads(requests.get(url).text)
 		
 		if result["found"] == 0:
-			l[i].append("unknown")
-			l[i].append("unknown")
+			l[i].append(config["failed_geocode_output"])
+			l[i].append(config["failed_geocode_output"])
 			complete += 1
 			print "Geocoded " + l[i][0] + " to " + l[i][1] + ", " + l[i][2]
 			return
@@ -41,8 +42,8 @@ with open('csv/toGeocode.csv', 'rb') as csvfile:
 	while complete < len(l):
 		pass
 	
-	o = open('csv/geocoded.csv', 'w')
-	o.write("location,lat,long\n")
+	o = open(config['output_file'], 'w')
+	o.write(config["address_column"] + ",lat,lon\n")
 	for loc in l:
 		o.write(str(loc[0]) + "," + str(loc[1]) + "," + str(loc[2]) + "\n")
 	

@@ -1,0 +1,6 @@
+{
+	"input_file": "csv/toGeocode.csv",
+	"address_column": "location",
+	"output_file": "csv/geocoded.csv",
+	"failed_geocode_output": "unknown"
+}
