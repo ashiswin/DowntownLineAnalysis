@@ -9,7 +9,6 @@ The goal of this notebook is to perform a quick analysis of the data to see if o
 library(tidyverse)
 library(lubridate)
 library(ggplot2)
-library(geoChina)
 
 prices <- read_csv('csv/final.csv')
 ```
@@ -75,10 +74,11 @@ Next we load in the KML of Singapore's subzones so we can perform a much finer-g
 
 ```{r}
 library(sf)
-subzones <- st_read("kml/MP14_SUBZONE_WEB_PL.kml")
+buffers <- st_read("shp/Downtown Line Stations Buffer.shp")
 priceShapes <- st_as_sf(geocodedPrices, coords = c("lon", "lat"))
-plot(subzones)
-plot(priceShapes, add = T)
+#plot(buffers)
+#plot(priceShapes, add = T)
+intersection = intersect(priceShapes, buffers)
 #coordinates(geocodedPrices) <- ~as.numeric(long)+as.numeric(lat)
 #toGeocode %over% subzones
 ```
