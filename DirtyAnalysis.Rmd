@@ -74,7 +74,7 @@ Next we load in the KML of Singapore's subzones so we can perform a much finer-g
 
 ```{r}
 library(sf)
-buffers <- st_read("shp/All Stations Buffer.shp")
+buffers <- st_read("shp/All Stations Buffers.shp")
 priceShapes <- st_as_sf(geocodedPrices, coords = c("lon", "lat"), crs = 4326)
 #plot(buffers)
 #plot(priceShapes, add = T)
@@ -84,19 +84,20 @@ intersection = st_intersection(priceShapes, buffers)
 ```
 
 Now that we have the intersection, we can re-plot the graphs above with higher granularity.
-```{r}
+```{r, fig.height=12, fig.width=12}
 toPlot <- intersection %>%
-  filter(NAME == "UPPER CHANGI STATION" | NAME == "MOUNTBATTEN") %>%
+  filter(NAME == "UPPER CHANGI STATION" | NAME == "MOUNTBATTEN" | NAME == "YEW TEE" | NAME == "WOODLANDS MRT STATION" | NAME == "TOA PAYOH" | NAME == "BUKIT PANJANG" | NAME == "TAMPINES EAST STATION" | NAME == "LITTLE INDIA STATION") %>%
   filter(flat_type == "4 ROOM") %>%
+  filter(year > 2000) %>%
   mutate(year = substr(month, 1, 4)) %>%
   mutate(resale_price = resale_price / 1000)
 
 ggplot(toPlot, aes(x=year, y=resale_price)) +
   geom_bar(stat="summary", fun.y = "median") +
-  facet_grid(NAME ~ ., scales="free_y") +
+  facet_grid(NAME ~ .) +
   theme(strip.text.y = element_text(angle = 0), axis.text.x = element_text(angle = 60, hjust = 1)) +
   ylab("Price in Thousands") + xlab("Year") + 
-  ggtitle("Median House Prices Over the Years") +
+  ggtitle("Median House Prices Over the Years by MRT Station") +
   guides(fill=FALSE)
 ```
 
