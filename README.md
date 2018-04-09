@@ -15,7 +15,7 @@ The system runs on R, so you need the appropriate R installation for your OS.
 ## Authors
 
 * **Gionnieve Lim** - [GioLim](https://github.com/GioLim)
-* **Ho Pei Yi Clara** - [fishballlaoda](https://github.com/fishballlaoda)
+* **Ho Pei Yi, Clara** - [fishballlaoda](https://github.com/fishballlaoda)
 * **Isaac Ashwin** - [ashiswin](https://github.com/ashiswin)
 * **Ong Jun Sheng** - [jarvin95](https://github.com/jarvin95)
 
