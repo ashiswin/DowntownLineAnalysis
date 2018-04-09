@@ -101,3 +101,22 @@ ggplot(toPlot, aes(x=year, y=resale_price)) +
   guides(fill=FALSE)
 ```
 
+We now test the Circle Line (CCL) stations instead:
+```{r, fig.width=12, fig.height=12}
+toPlot <- intersection %>%
+  filter(NAME == "MOUNTBATTEN" | NAME == "YEW TEE" | NAME == "WOODLANDS MRT STATION" | NAME == "HOLLAND VILLAGE" | NAME == "TELOK BLANGAH" | NAME == "JURONG EAST" | NAME == "PAYA LEBAR MRT STATION" | NAME == "BUONA VISTA" | NAME == "MARYMOUNT" | NAME == "CHOA CHU KANG") %>%
+  filter(flat_type == "4 ROOM") %>%
+  filter(year > 2000) %>%
+  filter(year < 2018) %>%
+  mutate(year = substr(month, 1, 4)) %>%
+  mutate(resale_price = resale_price / 1000)
+
+ggplot(toPlot, aes(x=year, y=resale_price)) +
+  geom_bar(stat="summary", fun.y = "median") +
+  facet_grid(NAME ~ .) +
+  theme(strip.text.y = element_text(angle = 0), axis.text.x = element_text(angle = 60, hjust = 1)) +
+  ylab("Price in Thousands") + xlab("Year") + 
+  ggtitle("Median House Prices Over the Years by MRT Station") +
+  guides(fill=FALSE)
+```
+
