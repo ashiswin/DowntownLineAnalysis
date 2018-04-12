@@ -75,10 +75,14 @@ Next we load in the KML of Singapore's subzones so we can perform a much finer-g
 ```{r}
 library(sf)
 buffers <- st_read("shp/All Stations Buffers.shp")
+buffers1km <- st_read("shp/All Stations Buffers 1KM.shp")
+buffers15km <- st_read("shp/All Stations Buffers 1.5KM.shp")
 priceShapes <- st_as_sf(geocodedPrices, coords = c("lon", "lat"), crs = 4326)
 #plot(buffers)
 #plot(priceShapes, add = T)
 intersection = st_intersection(priceShapes, buffers)
+intersection1km = st_intersection(priceShapes, buffers1km)
+intersection15km = st_intersection(priceShapes, buffers15km)
 #coordinates(geocodedPrices) <- ~as.numeric(long)+as.numeric(lat)
 #toGeocode %over% subzones
 ```
@@ -112,6 +116,42 @@ toPlot <- intersection %>%
   mutate(resale_price = resale_price / 1000)
 
 ggplot(toPlot, aes(x=year, y=resale_price)) +
+  geom_bar(stat="summary", fun.y = "median") +
+  facet_grid(NAME ~ .) +
+  theme(strip.text.y = element_text(angle = 0), axis.text.x = element_text(angle = 60, hjust = 1)) +
+  ylab("Price in Thousands") + xlab("Year") + 
+  ggtitle("Median House Prices Over the Years by MRT Station") +
+  guides(fill=FALSE)
+```
+
+```{r, fig.width=12, fig.height=12}
+toPlot1km <- intersection1km %>%
+  filter(NAME == "MOUNTBATTEN" | NAME == "YEW TEE" | NAME == "WOODLANDS MRT STATION" | NAME == "HOLLAND VILLAGE" | NAME == "TELOK BLANGAH" | NAME == "JURONG EAST" | NAME == "PAYA LEBAR MRT STATION" | NAME == "BUONA VISTA" | NAME == "MARYMOUNT" | NAME == "CHOA CHU KANG") %>%
+  filter(flat_type == "4 ROOM") %>%
+  filter(year > 2000) %>%
+  filter(year < 2018) %>%
+  mutate(year = substr(month, 1, 4)) %>%
+  mutate(resale_price = resale_price / 1000)
+
+ggplot(toPlot1km, aes(x=year, y=resale_price)) +
+  geom_bar(stat="summary", fun.y = "median") +
+  facet_grid(NAME ~ .) +
+  theme(strip.text.y = element_text(angle = 0), axis.text.x = element_text(angle = 60, hjust = 1)) +
+  ylab("Price in Thousands") + xlab("Year") + 
+  ggtitle("Median House Prices Over the Years by MRT Station") +
+  guides(fill=FALSE)
+```
+
+```{r, fig.width=12, fig.height=12}
+toPlot15km <- intersection15km %>%
+  filter(NAME == "MOUNTBATTEN" | NAME == "YEW TEE" | NAME == "WOODLANDS MRT STATION" | NAME == "HOLLAND VILLAGE" | NAME == "TELOK BLANGAH" | NAME == "JURONG EAST" | NAME == "PAYA LEBAR MRT STATION" | NAME == "BUONA VISTA" | NAME == "MARYMOUNT" | NAME == "CHOA CHU KANG") %>%
+  filter(flat_type == "4 ROOM") %>%
+  filter(year > 2000) %>%
+  filter(year < 2018) %>%
+  mutate(year = substr(month, 1, 4)) %>%
+  mutate(resale_price = resale_price / 1000)
+
+ggplot(toPlot15km, aes(x=year, y=resale_price)) +
   geom_bar(stat="summary", fun.y = "median") +
   facet_grid(NAME ~ .) +
   theme(strip.text.y = element_text(angle = 0), axis.text.x = element_text(angle = 60, hjust = 1)) +
