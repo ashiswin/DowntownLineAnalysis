@@ -1,0 +1,35 @@
+# Metadata for SDCP MRT Station Point
+---
+Identifier: 'a1df9b40-0bfa-4fe4-8497-c4cb10a5e019'
+Name: 'sdcp-mrt-station-point'
+Title: 'SDCP MRT Station Point'
+Description: 'Indication location of the MRT station.'
+Topics:
+  - 'Infrastructure'
+Keywords:
+  - 'Activity Generating Uses'
+  - 'MRT Station'
+Publisher:
+  Name: 'Urban Redevelopment Authority'
+  Admin 1:
+    Name: 'Pamela Poh'
+    Department: 'Urban Redevelopment Authority'
+    Email: 'pamela_poh@ura.gov.sg'
+Sources:
+  - 'Urban Redevelopment Authority'
+License: 'https://data.gov.sg/open-data-licence'
+Frequency: 'Ad-hoc'
+Last Updated: '2017-06-14T08:07:46.676766'
+Resources:
+  -
+    Identifier: '1123aaa2-4575-4181-81f6-8e11cda8bd8a'
+    Title: 'SDCP MRT Station Point (KML)'
+    Url: 'https://geo.data.gov.sg/g-mp08-act-mrt-stn-pt/2011/03/29/kml/g-mp08-act-mrt-stn-pt.zip'
+    Format: 'KML'
+    Last Updated: '2011-03-28T16:00:00'
+  -
+    Identifier: 'd6b746cd-ceb0-4135-bb4a-c498ac7df8bc'
+    Title: 'SDCP MRT Station Point (SHP)'
+    Url: 'https://geo.data.gov.sg/g-mp08-act-mrt-stn-pt/2011/03/29/shp/g-mp08-act-mrt-stn-pt.zip'
+    Format: 'SHP'
+    Last Updated: '2011-03-28T16:00:00'

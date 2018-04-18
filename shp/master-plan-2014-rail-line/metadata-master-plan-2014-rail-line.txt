@@ -1,0 +1,39 @@
+# Metadata for Master Plan 2014 Rail Line
+---
+Identifier: '2e85ebb2-104b-4a99-9ee7-79ba6a08631a'
+Name: 'master-plan-2014-rail-line'
+Title: 'Master Plan 2014 Rail Line'
+Description: 'Indicative line showing the MRT, LRT and Railway network.'
+Topics:
+  - 'Infrastructure'
+Keywords:
+  - 'LRT'
+  - 'MP14'
+  - 'MP2014'
+  - 'MRT'
+  - 'Master Plan 2014 Rail Line'
+  - 'rail'
+Publisher:
+  Name: 'Urban Redevelopment Authority'
+  Admin 1:
+    Name: 'Pamela Poh'
+    Department: 'Urban Redevelopment Authority'
+    Email: 'pamela_poh@ura.gov.sg'
+Sources:
+  - 'Urban Redevelopment Authority'
+License: 'https://data.gov.sg/open-data-licence'
+Frequency: 'Ad-hoc'
+Last Updated: '2017-06-14T08:15:53.105405'
+Resources:
+  -
+    Identifier: '682606ac-cc2c-44f8-b094-04b623860d5a'
+    Title: 'Master Plan 2014 Rail Line (KML)'
+    Url: 'https://geo.data.gov.sg/g-mp14-rail-li/2014/06/23/kml/g-mp14-rail-li.zip'
+    Format: 'KML'
+    Last Updated: '2014-06-22T16:00:00'
+  -
+    Identifier: 'a5a7d81c-4069-4335-8a5a-13103f7b64d3'
+    Title: 'Master Plan 2014 Rail Line (SHP)'
+    Url: 'https://geo.data.gov.sg/g-mp14-rail-li/2014/06/23/shp/g-mp14-rail-li.zip'
+    Format: 'SHP'
+    Last Updated: '2014-06-22T16:00:00'
