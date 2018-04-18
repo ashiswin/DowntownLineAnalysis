@@ -160,3 +160,37 @@ ggplot(toPlot15km, aes(x=year, y=resale_price)) +
   guides(fill=FALSE)
 ```
 
+```{r}
+library(tidyverse)
+library(lubridate)
+library(ggplot2)
+library(sf)
+
+subzones <- st_read('kml/MP14_SUBZONE_WEB_PL.kml')
+buffers <- st_read("shp/CCLNEL Multiring Buffer.shp") %>%
+  mutate(unique = paste0(OBJECTID, ".", distance))
+priceShapes <- st_read("shp/CCLNEL Intersection.shp") %>%
+  mutate(unique = paste0(OBJECTID, ".", distance)) %>%
+  mutate(psm = resale_p_1 / floor_area) %>%
+  mutate(year = as.numeric(substring(month, 1, 4))) %>%
+  mutate(flat_type = replace(flat_type, flat_type == "MULTI GENERATION", "MULTI-GENERATION"))
+
+priceShapes.unique <- priceShapes %>%
+  group_by(unique) %>%
+  summarise(median(resale_pri)) %>%
+  select(unique, median_price = "median(resale_pri)")
+```
+
+```{r}
+buffers.medians <- buffers %>%
+  left_join(as.data.frame(priceShapes.unique), by = c('unique' = 'unique')) %>%
+  drop_na(median_price) %>%
+  mutate(median_price = median_price / 1000)# %>%
+  #mutate(median_price = median_price / max(median_price))
+
+ggplot() +
+  geom_sf(subzones, mapping = aes()) +
+  geom_sf(buffers.medians, mapping = aes(fill = median_price))# +
+  #scale_fill_brewer(type="seq", palette = 5)
+```
+
