@@ -16,6 +16,10 @@ library(sf)
 
 We then read in the relevant data for our model:
 ```{r}
+stations <- st_read("shp/CCLNEL Stations Dissolved.shp")
+stations.centroid <- st_centroid(stations) %>%
+  select(NAME)
+
 lines <- c("Circle Line", "North East Line")
 completion <- c(2013, 2003)
 
@@ -24,21 +28,27 @@ lineData <- data.frame(lines, completion)
 priceShapes <- st_read("shp/CCLNEL Intersection.shp") %>%
   mutate(psm = resale_p_1 / floor_area) %>%
   mutate(year = as.numeric(substring(quarter, 1, 4))) %>%
-  filter(year > 2002) %>%
+  filter(year > 1999) %>%
   filter(year < 2018) %>%
   mutate(flat_type = replace(flat_type, flat_type == "MULTI GENERATION", "MULTI-GENERATION")) %>%
-  filter(flat_type == "4 ROOM") %>%
+  filter(flat_type != "MULTI-GENERATION" & flat_type != "EXECUTIVE") %>%
   mutate(age = year - lease_comm) %>%
-  mutate(years_since_line = year - as.numeric(lineData$completion[lineData$lines == train.st_2]))
+  mutate(years_since_line = year - as.numeric(lineData$completion[lineData$lines == train.st_2])) %>%
+  as.data.frame() %>%
+  left_join(as.data.frame(stations.centroid), by = c("NAME", "NAME")) %>%
+  rowwise() %>%
+  mutate(actual_distance = st_distance(geometry.x, geometry.y)) %>%
+  mutate(unique = paste0(block, " ", street_nam))
 
 for(i in 1:nrow(priceShapes)) {
   priceShapes$years_since_line[i] <- priceShapes$year[i] - lineData$completion[lineData$lines == priceShapes$train.st_2[i]]
 }
 
-priceShapes <- priceShapes %>%
-  filter(years_since_line >= 0) %>%
+priceShapes.mins <- priceShapes %>%
   group_by(block, street_nam) %>%
-  summarize(d = min(distance %>% as.character() %>% as.numeric()), p = min(psm))
+  summarize(min_dist = min(actual_distance)) %>%
+  mutate(unique = paste0(block, " ", street_nam)) %>%
+  left_join(priceShapes, by = c("unique", "unique"))
 ```
 
 For our model, we are going to use the following variables to perform the estimation:
@@ -47,13 +57,14 @@ For our model, we are going to use the following variables to perform the estima
 * Years since the completion of the line
 * Age of house
 ```{r}
-lm(data = priceShapes, formula = log(p) ~ factor(d)) %>% summary()
+model <- lm(data = priceShapes.mins, formula = psm ~ min_dist + age + years_since_line + factor(train.st_2) + factor(flat_type))
+summary(model)
 ```
 
-This linear model give's an obviously horrible result, with an R-squared value of 0.099. Let us see a plot of the data to determine the type of distribution it follows:
+This linear model gives decent results with an R-squared value of 0.3719.
 
 ```{r}
-ggplot(priceShapes, aes(psm)) + geom_histogram() +
+ggplot(priceShapes.mins, aes(psm)) + geom_histogram() +
   ggtitle("Distribution of Price per Square Metre")
 ```
 
@@ -64,16 +75,16 @@ ggplot(priceShapes, aes(log(age), log(psm))) + geom_point() +
 
 The data seems more like a left-skewed normal curve. In fact when we plot the logarithm of the data, we get a more normal-looking curve:
 ```{r}
-ggplot(priceShapes, aes(log(psm))) + geom_histogram() +
+ggplot(priceShapes.mins, aes(log(psm))) + geom_histogram() +
   ggtitle("Distribution of Price per Square Metre")
 ```
 
 Let us attempt a log-model of our data:
 ```{r}
-model <- glm(data = priceShapes, formula = log(psm) ~ distance + years_since_line + age, family = gaussian())
+model <- glm(data = priceShapes.mins, formula = psm ~ min_dist + age + years_since_line + factor(train.st_2), family = gaussian())
 r2 <- function(empirical, fitted) {
   return(cor(empirical, fitted) ^ 2)
 }
-rsquared = r2(priceShapes$psm, fitted(model))
+rsquared = r2(priceShapes.mins$psm, fitted(model))
 ```
 
