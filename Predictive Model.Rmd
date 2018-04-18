@@ -1,0 +1,79 @@
+---
+title: "Predictive Model of the Downtown Line"
+output: html_notebook
+---
+
+## Introduction
+This notebook aims to predict the effect the Downtown Line (DTL) is going to have on the property prices of the surrounding regions. To perform this prediction, we use past data of the HDB resale flat prices around the North East Line (NEL) which was completed in 2003 and the Circle Line (CCL) which was completed in 2013.
+
+We begin by loading the necessary libraries for our analysis:
+```{r}
+library(tidyverse)
+library(lubridate)
+library(ggplot2)
+library(sf)
+```
+
+We then read in the relevant data for our model:
+```{r}
+lines <- c("Circle Line", "North East Line")
+completion <- c(2013, 2003)
+
+lineData <- data.frame(lines, completion)
+
+priceShapes <- st_read("shp/CCLNEL Intersection.shp") %>%
+  mutate(psm = resale_p_1 / floor_area) %>%
+  mutate(year = as.numeric(substring(quarter, 1, 4))) %>%
+  filter(year > 2002) %>%
+  filter(year < 2018) %>%
+  mutate(flat_type = replace(flat_type, flat_type == "MULTI GENERATION", "MULTI-GENERATION")) %>%
+  filter(flat_type == "4 ROOM") %>%
+  mutate(age = year - lease_comm) %>%
+  mutate(years_since_line = year - as.numeric(lineData$completion[lineData$lines == train.st_2]))
+
+for(i in 1:nrow(priceShapes)) {
+  priceShapes$years_since_line[i] <- priceShapes$year[i] - lineData$completion[lineData$lines == priceShapes$train.st_2[i]]
+}
+
+priceShapes <- priceShapes %>%
+  filter(years_since_line >= 0) %>%
+  group_by(block, street_nam) %>%
+  summarize(d = min(distance %>% as.character() %>% as.numeric()), p = min(psm))
+```
+
+For our model, we are going to use the following variables to perform the estimation:
+
+* Distance from MRT station
+* Years since the completion of the line
+* Age of house
+```{r}
+lm(data = priceShapes, formula = log(p) ~ factor(d)) %>% summary()
+```
+
+This linear model give's an obviously horrible result, with an R-squared value of 0.099. Let us see a plot of the data to determine the type of distribution it follows:
+
+```{r}
+ggplot(priceShapes, aes(psm)) + geom_histogram() +
+  ggtitle("Distribution of Price per Square Metre")
+```
+
+```{r}
+ggplot(priceShapes, aes(log(age), log(psm))) + geom_point() +
+  ggtitle("Distribution of Price per Square Metre")
+```
+
+The data seems more like a left-skewed normal curve. In fact when we plot the logarithm of the data, we get a more normal-looking curve:
+```{r}
+ggplot(priceShapes, aes(log(psm))) + geom_histogram() +
+  ggtitle("Distribution of Price per Square Metre")
+```
+
+Let us attempt a log-model of our data:
+```{r}
+model <- glm(data = priceShapes, formula = log(psm) ~ distance + years_since_line + age, family = gaussian())
+r2 <- function(empirical, fitted) {
+  return(cor(empirical, fitted) ^ 2)
+}
+rsquared = r2(priceShapes$psm, fitted(model))
+```
+
