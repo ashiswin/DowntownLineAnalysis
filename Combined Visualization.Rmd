@@ -1,0 +1,326 @@
+---
+title: "R Notebook"
+output: html_notebook
+runtime: shiny
+---
+
+## Introduction
+Our project aims to predict the prices of resale HDB flats of various types and the effect that the Circle Line (CCL) and the North East Line (NEL) had on them. We also aim to develop a predictive model that can successfully predict future price fluctuations on the CCL and NEL as well as hopefully the effect of the Downtown Line (DTL) on property prices around it.
+
+## Data Visualization and Modelling
+
+We prepared a linear model with our data on the following variables about each house:
+
+* Distance to the nearest MRT station
+* Age of the flat
+* Years since the station was built
+* Which train station is near it
+* What type of flat is it
+
+After we generated the model, we proceeded to plot the visualization below. It is possible to see the actual prices of flats as well our model's predicted flat prices and compare to determine the accuracy of our model.
+```{r, echo = FALSE, results='hide'}
+library(tidyverse)
+library(lubridate)
+library(ggplot2)
+library(sf)
+library(Cairo)
+options(shiny.usecairo=TRUE)
+```
+```{r, echo = FALSE, result='hide'}
+stations <- st_read("~/Documents/DowntownLineAnalysis/shp/CCLNEL Stations Dissolved.shp")
+stations.centroid <- st_centroid(stations) %>%
+  select(NAME)
+
+lines <- c("Circle Line", "North East Line")
+completion <- c(2013, 2003)
+
+lineData <- data.frame(lines, completion)
+
+priceShapes <- st_read("~/Documents/DowntownLineAnalysis/shp/CCLNEL Intersection.shp") %>%
+  mutate(psm = resale_p_1 / floor_area) %>%
+  mutate(year = as.numeric(substring(quarter, 1, 4))) %>%
+  filter(year > 1999) %>%
+  filter(year < 2018) %>%
+  mutate(flat_type = replace(flat_type, flat_type == "MULTI GENERATION", "MULTI-GENERATION")) %>%
+  filter(flat_type != "MULTI-GENERATION" & flat_type != "EXECUTIVE") %>%
+  mutate(age = year - lease_comm) %>%
+  as.data.frame() %>%
+  left_join(as.data.frame(stations.centroid), by = c("NAME", "NAME")) %>%
+  mutate(unique = paste0(OBJECTID, ".", distance)) %>%
+  mutate(unique2 = paste0(block, " ", street_nam)) %>%
+  rowwise() %>%
+  mutate(actual_distance = st_distance(geometry.x, geometry.y))
+
+for(i in 1:nrow(priceShapes)) {
+  priceShapes$years_since_line[i] <- priceShapes$year[i] - lineData$completion[lineData$lines == priceShapes$train.st_2[i]]
+}
+
+priceShapes.mins <- priceShapes %>%
+  group_by(block, street_nam) %>%
+  summarize(min_dist = min(actual_distance)) %>%
+  mutate(unique2 = paste0(block, " ", street_nam)) %>%
+  left_join(priceShapes, by = c("unique2", "unique2"))
+model <- lm(data = priceShapes.mins, formula = psm ~ min_dist + age + years_since_line + factor(train.st_2) + factor(flat_type))
+```
+
+```{r, echo = FALSE, results="hide"}
+subzones <- st_read('~/Documents/DowntownLineAnalysis/shp/Planning_Area_Census2010.shp')
+buffers <- st_read("~/Documents/DowntownLineAnalysis/shp/CCLNEL Multiring Buffers.shp") %>%
+  mutate(unique = paste0(OBJECTID, ".", distance))
+#priceShapes <- st_read("~/Documents/DowntownLineAnalysis/shp/CCLNEL Intersection.shp") %>%
+#  mutate(unique = paste0(OBJECTID, ".", distance)) %>%
+#  mutate(psm = resale_p_1 / floor_area) %>%
+#  mutate(year = as.numeric(substring(quarter, 1, 4))) %>%
+#  mutate(flat_type = replace(flat_type, flat_type == "MULTI GENERATION", "MULTI-GENERATION")) %>%
+#  filter(flat_type != "MULTI-GENERATION" & flat_type != "EXECUTIVE")
+#stations <- st_read("~/Documents/DowntownLineAnalysis/shp/CCLNEL Stations Dissolved.shp")
+#stations.centroid <- st_centroid(stations) %>%
+#  select(NAME)
+
+colors <- c("#ffffd4", "#fed98e", "#fe9929", "#d95f0e", "#d95f0e")
+breaks <- c(0, 0.2, 2, 2.6, 3.2, 1200)
+labels <- c("0", "0.2", "2", "2.6", "3.2+", "4+", "bla")
+```
+
+```{r, echo = FALSE}
+fluidRow(
+        column(4, selectInput("line",
+                  label = "Choose an MRT line to display",
+                  choices = c("Circle Line", "North East Line"),
+                  selected = "Circle")),
+        column(4, radioButtons("flatType", "Flat Type:",
+             choices = unique(priceShapes$flat_type))),
+        column(4, radioButtons("modelType", "Model:",
+             choices = c("Actual Prices", "Predicted Prices")))
+)
+div(class="col-md-12", width="100%", sliderInput(inputId = "year",
+            width="100%",
+            label = "Year:",
+            min = 2000,
+            max = max(priceShapes$year),
+            value = 2000))
+output$unsized <- renderPlot(width=1080, height=1080, {
+    if(input$modelType == "Actual Prices") {
+      colors <- c("#ffffd4", "#fed98e", "#fe9929", "#d95f0e", "#d95f0e")
+      breaks <- c(0, 0.2, 2, 2.6, 3.2, 1200)
+      labels <- c("0", "0.2", "2", "2.6", "3.2+", "4+", "bla")
+      
+      priceShapes.unique <- priceShapes %>%
+        filter(train.st_2 == input$line) %>%
+        filter(year == input$year) %>%
+        filter(flat_type == input$flatType) %>%
+        group_by(unique) %>%
+        summarise(median_price = median(psm), count = n())
+      
+      buffers.medians <- buffers %>%
+        left_join(as.data.frame(priceShapes.unique), by = c('unique' = 'unique')) %>%
+        drop_na(median_price) %>%
+        mutate(median_price = median_price / 1000)
+      ggplot() +
+        geom_sf(subzones, mapping = aes(), fill = "#C6DCEF", color = "#EEEEEE") +
+        geom_sf(stations, mapping = aes(), color = "#CCCCCC") +
+        xlim(21000, 37000) +
+        ylim(26000, 41000) +
+        geom_sf(buffers.medians, mapping = aes(fill = cut(median_price,
+                                                          include.lowest = T,
+                                                          breaks = breaks),
+                                               alpha = cut(count,
+                                                           breaks = c(0, 5, 10, 10000))), color = NA) +
+        coord_sf(datum = NA) +
+        scale_fill_manual(values = colors, labels = labels, drop = F, guide = guide_legend(title = "Median House Price",
+                                                                title.theme = element_text(size = 25, angle = 0),
+                                                                title.position = "top",
+                                                                label.position = "top",
+                                                                label.theme = element_text(size = 16, angle = 0))) +
+        scale_alpha_discrete(guide = "none") +
+        theme_bw() +
+        theme(legend.position=c(0.8, 0.1), legend.direction = "horizontal",
+              panel.grid.major = element_blank(),
+              panel.grid.minor = element_blank(),
+              panel.border = element_blank(),
+              panel.background = element_blank(),
+              legend.key.height = unit(8, "mm"),
+              legend.key.width = unit(24, "mm"))
+    }
+    else {
+      priceShapes.unique <- priceShapes
+      if(input$year <= max(priceShapes$year)) {
+        colors <- c("#ffffd4", "#fed98e", "#fe9929", "#d95f0e", "#d95f0e")
+        breaks <- c(0, 0.2, 2, 2.6, 3.2, 1200)
+        labels <- c("0", "0.2", "2", "2.6", "3.2+", "4+", "bla")
+        
+        priceShapes.unique <- priceShapes.unique %>%
+          filter(train.st_2 == input$line) %>%
+          filter(year == input$year) %>%
+          filter(flat_type == input$flatType) %>%
+          group_by(unique) %>%
+          as.data.frame() %>%
+          left_join(as.data.frame(stations.centroid), by = c("NAME", "NAME")) %>%
+          rowwise()  %>%
+          mutate(age = year - lease_comm) %>%
+          mutate(years_since_line = year - as.numeric(lineData$completion[lineData$lines == train.st_2])) %>%
+          mutate(actual_distance = st_distance(geometry.x, geometry.y)) %>%
+          mutate(unique2 = paste0(block, " ", street_nam)) %>%
+          ungroup()
+      }
+      else {
+        colors <- c("#ffffe5", "#fff7bc", "#fee391", "#fec44f", "#fe9929", "#ec7014", "#cc4c02", "#8c2d04")
+        breaks <- c(0, 0.2, 2, 2.6, 3.2, 5, 12, 1200)
+        labels <- c("0", "0.2", "2", "2.6", "3.2", "5", "12+", "bla")
+        priceShapes.unique <- priceShapes.unique %>%
+          filter(train.st_2 == input$line) %>%
+          mutate(year = input$year) %>%
+          filter(flat_type == input$flatType) %>%
+          group_by(unique) %>%
+          as.data.frame() %>%
+          left_join(as.data.frame(stations.centroid), by = c("NAME", "NAME")) %>%
+          rowwise()  %>%
+          mutate(age = year - lease_comm) %>%
+          mutate(years_since_line = year - as.numeric(lineData$completion[lineData$lines == train.st_2])) %>%
+          mutate(actual_distance = st_distance(geometry.x, geometry.y)) %>%
+          mutate(unique2 = paste0(block, " ", street_nam)) %>%
+          ungroup()
+      }
+      for(i in 1:nrow(priceShapes.unique)) {
+        priceShapes.unique$years_since_line[i] <- priceShapes.unique$year[i] - lineData$completion[lineData$lines == priceShapes.unique$train.st_2[i]]
+      }
+      
+      priceShapes.unique <- priceShapes.unique %>%
+        group_by(block, street_nam) %>%
+        summarize(min_dist = min(actual_distance)) %>%
+        mutate(unique2 = paste0(block, " ", street_nam)) %>%
+        left_join(priceShapes.unique, by = c("unique2", "unique2"))
+      
+      priceShapes.unique$f = predict(model, newdata = priceShapes.unique)
+      
+      priceShapes.unique <- priceShapes.unique %>%
+        group_by(unique) %>%
+        summarise(median_price = median(f), count = n())
+      
+      buffers.medians <- buffers %>%
+        left_join(priceShapes.unique, by = c('unique' = 'unique')) %>%
+        drop_na(median_price) %>%
+        mutate(median_price = median_price / 1000)
+      ggplot() +
+        geom_sf(subzones, mapping = aes(), fill = "#C6DCEF", color = "#EEEEEE") +
+        geom_sf(stations, mapping = aes(), color = "#CCCCCC") +
+        xlim(21000, 37000) +
+        ylim(26000, 41000) +
+        geom_sf(buffers.medians, mapping = aes(fill = cut(median_price,
+                                                          include.lowest = T,
+                                                          breaks = breaks),
+                                               alpha = cut(count,
+                                                           breaks = c(0, 5, 10, 10000))), color = NA) +
+        coord_sf(datum = NA) +
+        scale_fill_manual(values = colors, labels = labels, drop = F, guide = guide_legend(title = "Median House Price",
+                                                                                           title.theme = element_text(size = 25, angle = 0),
+                                                                                           title.position = "top",
+                                                                                           label.position = "top",
+                                                                                           label.theme = element_text(size = 16, angle = 0))) +
+        scale_alpha_discrete(guide = "none") +
+        theme_bw() +
+        theme(legend.position=c(0.8, 0.1), legend.direction = "horizontal",
+              panel.grid.major = element_blank(),
+              panel.grid.minor = element_blank(),
+              panel.border = element_blank(),
+              panel.background = element_blank(),
+              legend.key.height = unit(8, "mm"),
+              legend.key.width = unit(24, "mm"))
+    }
+})
+renderUI({
+  plotOutput("unsized", height = 1080)
+})
+```
+
+We noticed our model tended to become a lot more accurate in the later years. Upon inspection of the data, we determined it could be due to the much larger amount of data in the later years as opposed to the earlier years. Hence, the model would be better fit for those regions. Out model parameters turned out as follows:
+```{r, echo=FALSE}
+summary(model)
+```
+
+## Predictions
+
+We now attempt to use our model to predict future prices of properties around the CCL and NEL.
+```{r, echo = FALSE}
+fluidRow(
+        column(6, selectInput("line2",
+                  label = "Choose an MRT line to display",
+                  choices = c("Circle Line", "North East Line"),
+                  selected = "Circle")),
+        column(6, radioButtons("flatType2", "Flat Type:",
+            choices = unique(priceShapes$flat_type)))
+)
+div(class="col-md-12", width="100%", sliderInput(inputId = "year2",
+            width="100%",
+            label = "Year:",
+            min = 2018,
+            max = 2025,
+            value = 2018))
+output$unsized2 <- renderPlot(width=1080, height=1080, {
+    priceShapes.unique2 <- priceShapes
+    
+    colors <- c("#ffffe5", "#fff7bc", "#fee391", "#fec44f", "#fe9929", "#ec7014", "#cc4c02", "#8c2d04")
+    breaks <- c(0, 0.2, 2, 2.6, 3.2, 3.3, 3.8, 5, 10000)
+    labels <- c("0", "0.2", "2", "2.6", "3.2", "3.3", "3.8", "4+")
+    priceShapes.unique2 <- priceShapes.unique2 %>%
+      filter(train.st_2 == input$line2) %>%
+      mutate(year = input$year2) %>%
+      filter(flat_type == input$flatType2) %>%
+      group_by(unique) %>%
+      as.data.frame() %>%
+      left_join(as.data.frame(stations.centroid), by = c("NAME", "NAME")) %>%
+      rowwise()  %>%
+      mutate(age = year - lease_comm) %>%
+      mutate(years_since_line = year - as.numeric(lineData$completion[lineData$lines == train.st_2])) %>%
+      mutate(actual_distance = st_distance(geometry.x, geometry.y)) %>%
+      mutate(unique2 = paste0(block, " ", street_nam)) %>%
+      ungroup()
+    
+    for(i in 1:nrow(priceShapes.unique2)) {
+      priceShapes.unique2$years_since_line[i] <- priceShapes.unique2$year[i] - lineData$completion[lineData$lines == priceShapes.unique2$train.st_2[i]]
+    }
+    
+    priceShapes.unique2 <- priceShapes.unique2 %>%
+      group_by(block, street_nam) %>%
+      summarize(min_dist = min(actual_distance)) %>%
+      mutate(unique2 = paste0(block, " ", street_nam)) %>%
+      left_join(priceShapes.unique2, by = c("unique2", "unique2"))
+    
+    priceShapes.unique2$f = predict(model, newdata = priceShapes.unique2)
+    
+    priceShapes.unique2 <- priceShapes.unique2 %>%
+      group_by(unique) %>%
+      summarise(median_price = median(f), count = n())
+    
+    buffers.medians <- buffers %>%
+      left_join(priceShapes.unique2, by = c('unique' = 'unique')) %>%
+      drop_na(median_price) %>%
+      mutate(median_price = median_price / 1000)
+    ggplot() +
+      geom_sf(subzones, mapping = aes(), fill = "#C6DCEF", color = "#EEEEEE") +
+      geom_sf(stations, mapping = aes(), color = "#CCCCCC") +
+      xlim(21000, 37000) +
+      ylim(26000, 41000) +
+      geom_sf(buffers.medians, mapping = aes(fill = cut(median_price,
+                                                        include.lowest = T,
+                                                        breaks = breaks)), color = NA) +
+      coord_sf(datum = NA) +
+      scale_fill_manual(values = colors, labels = labels, drop = F, guide = guide_legend(title = "Median House Price",
+                                                                                         title.theme = element_text(size = 25, angle = 0),
+                                                                                         title.position = "top",
+                                                                                         label.position = "top",
+                                                                                         label.theme = element_text(size = 16, angle = 0))) +
+      theme_bw() +
+      theme(legend.position=c(0.7, 0.1), legend.direction = "horizontal",
+            panel.grid.major = element_blank(),
+            panel.grid.minor = element_blank(),
+            panel.border = element_blank(),
+            panel.background = element_blank(),
+            legend.key.height = unit(8, "mm"),
+            legend.key.width = unit(16, "mm"))
+})
+renderUI({
+  plotOutput("unsized2", height = 1080)
+})
+```
+
