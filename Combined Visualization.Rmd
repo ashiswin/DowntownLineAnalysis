@@ -1,5 +1,5 @@
 ---
-title: "R Notebook"
+title: "Analysis of the Impact of the Circle Line and North East Line on Property Prices"
 output: html_notebook
 runtime: shiny
 ---
@@ -18,7 +18,7 @@ We prepared a linear model with our data on the following variables about each h
 * What type of flat is it
 
 After we generated the model, we proceeded to plot the visualization below. It is possible to see the actual prices of flats as well our model's predicted flat prices and compare to determine the accuracy of our model.
-```{r, echo = FALSE, results='hide'}
+```{r, echo = FALSE, results='hide', warning=FALSE}
 library(tidyverse)
 library(lubridate)
 library(ggplot2)
@@ -26,7 +26,8 @@ library(sf)
 library(Cairo)
 options(shiny.usecairo=TRUE)
 ```
-```{r, echo = FALSE, result='hide'}
+
+```{r, echo = FALSE, result='hide', warning=FALSE}
 stations <- st_read("~/Documents/DowntownLineAnalysis/shp/CCLNEL Stations Dissolved.shp")
 stations.centroid <- st_centroid(stations) %>%
   select(NAME)
@@ -63,7 +64,7 @@ priceShapes.mins <- priceShapes %>%
 model <- lm(data = priceShapes.mins, formula = psm ~ min_dist + age + years_since_line + factor(train.st_2) + factor(flat_type))
 ```
 
-```{r, echo = FALSE, results="hide"}
+```{r, echo = FALSE, results="hide", warning=FALSE}
 subzones <- st_read('~/Documents/DowntownLineAnalysis/shp/Planning_Area_Census2010.shp')
 buffers <- st_read("~/Documents/DowntownLineAnalysis/shp/CCLNEL Multiring Buffers.shp") %>%
   mutate(unique = paste0(OBJECTID, ".", distance))
