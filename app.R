@@ -61,11 +61,15 @@ server <- function(input, output, session) {
       updateSliderInput(session, "year", value = input$year, min = 2000, max = 2025, step = 1)
     }
     else {
-      updateSliderInput(session, "year", value = input$year, min = 2000, max = max(priceShapes$year), step = 1)
+      updateSliderInput(session, "year", value = min(input$year, max(priceShapes$year)), min = 2000, max = max(priceShapes$year), step = 1)
     }
   })
   output$distPlot <- renderPlot({
     if(input$modelType == "Actual Prices") {
+      colors <- c("#ffffd4", "#fed98e", "#fe9929", "#d95f0e", "#d95f0e")
+      breaks <- c(0, 0.2, 2, 2.6, 3.2, 1200)
+      labels <- c("0", "0.2", "2", "2.6", "3.2+", "4+", "bla")
+      
       priceShapes.unique <- priceShapes %>%
         filter(train.st_2 == input$line) %>%
         filter(year == input$year) %>%
@@ -78,7 +82,7 @@ server <- function(input, output, session) {
         drop_na(median_price) %>%
         mutate(median_price = median_price / 1000)
       ggplot() +
-        geom_sf(subzones, mapping = aes(), fill = "#FFB848", color = "#EEEEEE") +
+        geom_sf(subzones, mapping = aes(), fill = "#C6DCEF", color = "#EEEEEE") +
         geom_sf(stations, mapping = aes(), color = "#CCCCCC") +
         xlim(21000, 37000) +
         ylim(26000, 41000) +
@@ -104,20 +108,45 @@ server <- function(input, output, session) {
               legend.key.width = unit(24, "mm"))
     }
     else {
-      priceShapes.unique <- priceShapes %>%
-        filter(train.st_2 == input$line) %>%
-        filter(year == input$year) %>%
-        filter(flat_type == input$flatType) %>%
-        group_by(unique) %>%
-        as.data.frame() %>%
-        left_join(as.data.frame(stations.centroid), by = c("NAME", "NAME")) %>%
-        rowwise()  %>%
-        mutate(age = year - lease_comm) %>%
-        mutate(years_since_line = year - as.numeric(lineData$completion[lineData$lines == train.st_2])) %>%
-        mutate(actual_distance = st_distance(geometry.x, geometry.y)) %>%
-        mutate(unique2 = paste0(block, " ", street_nam)) %>%
-        ungroup()
+      priceShapes.unique <- priceShapes
+      if(input$year <= max(priceShapes$year)) {
+        colors <- c("#ffffd4", "#fed98e", "#fe9929", "#d95f0e", "#d95f0e")
+        breaks <- c(0, 0.2, 2, 2.6, 3.2, 1200)
+        labels <- c("0", "0.2", "2", "2.6", "3.2+", "4+", "bla")
         
+        priceShapes.unique <- priceShapes.unique %>%
+          filter(train.st_2 == input$line) %>%
+          filter(year == input$year) %>%
+          filter(flat_type == input$flatType) %>%
+          group_by(unique) %>%
+          as.data.frame() %>%
+          left_join(as.data.frame(stations.centroid), by = c("NAME", "NAME")) %>%
+          rowwise()  %>%
+          mutate(age = year - lease_comm) %>%
+          mutate(years_since_line = year - as.numeric(lineData$completion[lineData$lines == train.st_2])) %>%
+          mutate(actual_distance = st_distance(geometry.x, geometry.y)) %>%
+          mutate(unique2 = paste0(block, " ", street_nam)) %>%
+          ungroup()
+      }
+      else {
+        colors <- c("#ffffe5", "#fff7bc", "#fee391", "#fec44f", "#fe9929", "#ec7014", "#cc4c02", "#8c2d04")
+        breaks <- c(0, 0.2, 2, 2.6, 3.2, 5, 12, 1200)
+        labels <- c("0", "0.2", "2", "2.6", "3.2", "5", "12+", "bla")
+        priceShapes.unique <- priceShapes.unique %>%
+          filter(train.st_2 == input$line) %>%
+          mutate(year = input$year) %>%
+          filter(flat_type == input$flatType) %>%
+          group_by(unique) %>%
+          as.data.frame() %>%
+          left_join(as.data.frame(stations.centroid), by = c("NAME", "NAME")) %>%
+          rowwise()  %>%
+          mutate(age = year - lease_comm) %>%
+          mutate(years_since_line = year - as.numeric(lineData$completion[lineData$lines == train.st_2])) %>%
+          mutate(actual_distance = st_distance(geometry.x, geometry.y)) %>%
+          mutate(unique2 = paste0(block, " ", street_nam)) %>%
+          ungroup()
+      }
+      print(priceShapes.unique)
       for(i in 1:nrow(priceShapes.unique)) {
         priceShapes.unique$years_since_line[i] <- priceShapes.unique$year[i] - lineData$completion[lineData$lines == priceShapes.unique$train.st_2[i]]
       }
@@ -139,7 +168,7 @@ server <- function(input, output, session) {
         drop_na(median_price) %>%
         mutate(median_price = median_price / 1000)
       ggplot() +
-        geom_sf(subzones, mapping = aes(), fill = "#FFB848", color = "#EEEEEE") +
+        geom_sf(subzones, mapping = aes(), fill = "#C6DCEF", color = "#EEEEEE") +
         geom_sf(stations, mapping = aes(), color = "#CCCCCC") +
         xlim(21000, 37000) +
         ylim(26000, 41000) +
