@@ -18,7 +18,7 @@ We prepared a linear model with our data on the following variables about each h
 * What type of flat is it
 
 After we generated the model, we proceeded to plot the visualization below. It is possible to see the actual prices of flats as well our model's predicted flat prices and compare to determine the accuracy of our model.
-```{r, echo = FALSE, results='hide', warning=FALSE}
+```{r, echo = FALSE, results='hide', warning=FALSE, message=FALSE}
 library(tidyverse)
 library(lubridate)
 library(ggplot2)
@@ -27,10 +27,13 @@ library(Cairo)
 options(shiny.usecairo=TRUE)
 ```
 
-```{r, echo = FALSE, result='hide', warning=FALSE}
+```{r, echo = FALSE, result='hide', warning=FALSE, message=FALSE}
 stations <- st_read("~/Documents/DowntownLineAnalysis/shp/CCLNEL Stations Dissolved.shp")
 stations.centroid <- st_centroid(stations) %>%
   select(NAME)
+
+ccl_line <- st_read("~/Documents/DowntownLineAnalysis/shp/CCL Rail Line.shp")
+nel_line <- st_read("~/Documents/DowntownLineAnalysis/shp/NEL Rail Line.shp")
 
 lines <- c("Circle Line", "North East Line")
 completion <- c(2013, 2003)
@@ -64,7 +67,7 @@ priceShapes.mins <- priceShapes %>%
 model <- lm(data = priceShapes.mins, formula = psm ~ min_dist + age + years_since_line + factor(train.st_2) + factor(flat_type))
 ```
 
-```{r, echo = FALSE, results="hide", warning=FALSE}
+```{r, echo = FALSE, results="hide", warning=FALSE, message=FALSE}
 subzones <- st_read('~/Documents/DowntownLineAnalysis/shp/Planning_Area_Census2010.shp')
 buffers <- st_read("~/Documents/DowntownLineAnalysis/shp/CCLNEL Multiring Buffers.shp") %>%
   mutate(unique = paste0(OBJECTID, ".", distance))
@@ -101,8 +104,18 @@ div(class="col-md-12", width="100%", sliderInput(inputId = "year",
             max = max(priceShapes$year),
             value = 2000))
 output$unsized <- renderPlot(width=1080, height=1080, {
+    line_to_draw <- ccl_line
+    color_for_line <- "#DC9F44"
+    colors <- c("#ffffd4", "#fed98e", "#fe9929", "#d95f0e", "#d95f0e")
+    breaks <- c(0, 0.2, 2, 2.6, 3.2, 1200)
+    labels <- c("0", "0.2", "2", "2.6", "3.2+", "4+", "bla")
+    
+    if(input$line == "North East Line") {
+      line_to_draw <- nel_line
+      color_for_line <- "#761E86"
+      colors <- c("#f2f0f7", "#cbc9e2", "#9e9ac8", "#756bb1", "#54278f")
+    }
     if(input$modelType == "Actual Prices") {
-      colors <- c("#ffffd4", "#fed98e", "#fe9929", "#d95f0e", "#d95f0e")
       breaks <- c(0, 0.2, 2, 2.6, 3.2, 1200)
       labels <- c("0", "0.2", "2", "2.6", "3.2+", "4+", "bla")
       
@@ -120,6 +133,7 @@ output$unsized <- renderPlot(width=1080, height=1080, {
       ggplot() +
         geom_sf(subzones, mapping = aes(), fill = "#C6DCEF", color = "#EEEEEE") +
         geom_sf(stations, mapping = aes(), color = "#CCCCCC") +
+        geom_sf(line_to_draw, mapping = aes(), color = color_for_line) +
         xlim(21000, 37000) +
         ylim(26000, 41000) +
         geom_sf(buffers.medians, mapping = aes(fill = cut(median_price,
@@ -144,44 +158,20 @@ output$unsized <- renderPlot(width=1080, height=1080, {
               legend.key.width = unit(24, "mm"))
     }
     else {
-      priceShapes.unique <- priceShapes
-      if(input$year <= max(priceShapes$year)) {
-        colors <- c("#ffffd4", "#fed98e", "#fe9929", "#d95f0e", "#d95f0e")
-        breaks <- c(0, 0.2, 2, 2.6, 3.2, 1200)
-        labels <- c("0", "0.2", "2", "2.6", "3.2+", "4+", "bla")
-        
-        priceShapes.unique <- priceShapes.unique %>%
-          filter(train.st_2 == input$line) %>%
-          filter(year == input$year) %>%
-          filter(flat_type == input$flatType) %>%
-          group_by(unique) %>%
-          as.data.frame() %>%
-          left_join(as.data.frame(stations.centroid), by = c("NAME", "NAME")) %>%
-          rowwise()  %>%
-          mutate(age = year - lease_comm) %>%
-          mutate(years_since_line = year - as.numeric(lineData$completion[lineData$lines == train.st_2])) %>%
-          mutate(actual_distance = st_distance(geometry.x, geometry.y)) %>%
-          mutate(unique2 = paste0(block, " ", street_nam)) %>%
-          ungroup()
-      }
-      else {
-        colors <- c("#ffffe5", "#fff7bc", "#fee391", "#fec44f", "#fe9929", "#ec7014", "#cc4c02", "#8c2d04")
-        breaks <- c(0, 0.2, 2, 2.6, 3.2, 5, 12, 1200)
-        labels <- c("0", "0.2", "2", "2.6", "3.2", "5", "12+", "bla")
-        priceShapes.unique <- priceShapes.unique %>%
-          filter(train.st_2 == input$line) %>%
-          mutate(year = input$year) %>%
-          filter(flat_type == input$flatType) %>%
-          group_by(unique) %>%
-          as.data.frame() %>%
-          left_join(as.data.frame(stations.centroid), by = c("NAME", "NAME")) %>%
-          rowwise()  %>%
-          mutate(age = year - lease_comm) %>%
-          mutate(years_since_line = year - as.numeric(lineData$completion[lineData$lines == train.st_2])) %>%
-          mutate(actual_distance = st_distance(geometry.x, geometry.y)) %>%
-          mutate(unique2 = paste0(block, " ", street_nam)) %>%
-          ungroup()
-      }
+      
+      priceShapes.unique <- priceShapes %>%
+        filter(train.st_2 == input$line) %>%
+        filter(year == input$year) %>%
+        filter(flat_type == input$flatType) %>%
+        group_by(unique) %>%
+        as.data.frame() %>%
+        left_join(as.data.frame(stations.centroid), by = c("NAME", "NAME")) %>%
+        rowwise()  %>%
+        mutate(age = year - lease_comm) %>%
+        mutate(years_since_line = year - as.numeric(lineData$completion[lineData$lines == train.st_2])) %>%
+        mutate(actual_distance = st_distance(geometry.x, geometry.y)) %>%
+        mutate(unique2 = paste0(block, " ", street_nam)) %>%
+        ungroup()
       for(i in 1:nrow(priceShapes.unique)) {
         priceShapes.unique$years_since_line[i] <- priceShapes.unique$year[i] - lineData$completion[lineData$lines == priceShapes.unique$train.st_2[i]]
       }
@@ -205,6 +195,7 @@ output$unsized <- renderPlot(width=1080, height=1080, {
       ggplot() +
         geom_sf(subzones, mapping = aes(), fill = "#C6DCEF", color = "#EEEEEE") +
         geom_sf(stations, mapping = aes(), color = "#CCCCCC") +
+        geom_sf(line_to_draw, mapping = aes(), color = color_for_line) +
         xlim(21000, 37000) +
         ylim(26000, 41000) +
         geom_sf(buffers.medians, mapping = aes(fill = cut(median_price,
@@ -258,11 +249,18 @@ div(class="col-md-12", width="100%", sliderInput(inputId = "year2",
             max = 2025,
             value = 2018))
 output$unsized2 <- renderPlot(width=1080, height=1080, {
-    priceShapes.unique2 <- priceShapes
-    
+    line_to_draw2 <- ccl_line
+    color_for_line2 <- "#DC9F44"
     colors <- c("#ffffe5", "#fff7bc", "#fee391", "#fec44f", "#fe9929", "#ec7014", "#cc4c02", "#8c2d04")
     breaks <- c(0, 0.2, 2, 2.6, 3.2, 3.3, 3.8, 5, 10000)
     labels <- c("0", "0.2", "2", "2.6", "3.2", "3.3", "3.8", "4+")
+    if(input$line2 == "North East Line") {
+      line_to_draw2 <- nel_line
+      color_for_line2 <- "#761E86"
+      colors <- c("#fcfbfd", "#efedf5", "#dadaeb", "#bcbddc", "#9e9ac8", "#807dba", "#6a51a3", "#4a1486")
+    }
+    priceShapes.unique2 <- priceShapes
+    
     priceShapes.unique2 <- priceShapes.unique2 %>%
       filter(train.st_2 == input$line2) %>%
       mutate(year = input$year2) %>%
@@ -300,6 +298,7 @@ output$unsized2 <- renderPlot(width=1080, height=1080, {
     ggplot() +
       geom_sf(subzones, mapping = aes(), fill = "#C6DCEF", color = "#EEEEEE") +
       geom_sf(stations, mapping = aes(), color = "#CCCCCC") +
+      geom_sf(line_to_draw2, mapping = aes(), color = color_for_line2) +
       xlim(21000, 37000) +
       ylim(26000, 41000) +
       geom_sf(buffers.medians, mapping = aes(fill = cut(median_price,
