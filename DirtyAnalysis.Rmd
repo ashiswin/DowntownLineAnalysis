@@ -26,10 +26,9 @@ We now need to decide on a few towns we wish to analyse over the years. We decid
 
 We chose these due to them being quite far from the Downtown line. These locations also haven't had any new MRT stations nearby in a very long time, which should reduce the possibility of unintended price increases.
 
-We chose the following towns to be our *"experimental"* towns:
+We chose the following town to be our *"experimental"* towns:
 
 * Tampines
-* 
 
 These tend to have quite a number of HDB blocks around them, which is what our dataset contains. We now need to extract the relevant components of our dataset and plot facet plots of them. For the purpose of our analysis, we use 4-room flats as they are the most commonly purchased/sold units.
 
@@ -180,7 +179,11 @@ priceShapes.unique <- priceShapes %>%
   summarise(median(resale_pri)) %>%
   select(unique, median_price = "median(resale_pri)")
 ```
-
+  
+Visually, we can see that the difference in trend is more apparent between the NEL and non-NEL towns, and the CCL and non-CCL towns as compared to the DTL and non-DTL towns. We surmise that this is caused by the recency of DTL's completion, whereby there is a delay between the completion of the stations' construction and the rise in the prices of the property in the proximity. Therefore, we decide to change our analysis to the NEL and CCL instead of DTL. 
+  
+A quick look on what we can expect in our analysis for NEL and CCL. 
+  
 ```{r}
 buffers.medians <- buffers %>%
   left_join(as.data.frame(priceShapes.unique), by = c('unique' = 'unique')) %>%
